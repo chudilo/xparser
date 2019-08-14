@@ -25,6 +25,8 @@ import argparse
 from collections import OrderedDict
 from dicttoxml2 import dicttoxml2
 from string import punctuation
+import sys
+# import xlrd
 
 #logging config:
 logger = logging.getLogger(__name__)
@@ -73,7 +75,7 @@ def value_from_dict(value, dictionary='none_values'):
         return value
     try:
         return dictionaries[dictionary][normalize(value)]
-    except Exception, err:
+    except Exception as err:
         logger.warning(u'"{0}" not in <{1}>'.format(value, dictionary))
         return value
 
@@ -95,8 +97,8 @@ def not_empty(val):
         if type(val).__name__ in ('str', 'unicode'): # FIXME: `isinstance(val, types)` is better
             val = " ".join(val.lower().split()) # catch ' -', ' не  имеет '...
             
-        if type(val).__name__ in ('int', 'long', 'float',):
-            val = unicode(val)
+        if type(val).__name__ in ('int', 'long', 'float'):
+            val = str(val)
             
         if val not in empty_values and val not in unwanted:
             return True
@@ -113,7 +115,7 @@ def parse_person(column_range):
     try:
         start, end = column_range.split(':')
         logger.info('Parsing persons from {} to {}'.format(start, end))
-    except Exception, err:
+    except Exception as err:
         logger.error('Invalid column range'.format(err))
 
     unwanted_chars = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
@@ -131,7 +133,7 @@ def parse_person(column_range):
 
         try:
             p_raw_int = int(p_raw.strip(unwanted_chars))
-        except ValueError, err:
+        except ValueError as err:
             logger.warning("Strange P numbering: {}".format(p_raw))
             p_raw_int = p_raw.strip(unwanted_chars)
 
@@ -166,12 +168,12 @@ def parse_person(column_range):
                         })
                     person_id += 1
                     person_num += 1
-                except Exception, err:
+                except Exception as err:
                     logger.error("Error while parsing persons: {}".format(err))
 
     # check whether p_old == p
-    ps_generated = [parsed_persons[i]['p'] for i in xrange(len(parsed_persons))]
-    ps_from_file = [parsed_persons[i]['p_raw'] for i in xrange(len(parsed_persons))]
+    ps_generated = [parsed_persons[i]['p'] for i in range(len(parsed_persons))]
+    ps_from_file = [parsed_persons[i]['p_raw'] for i in range(len(parsed_persons))]
     check_result = check_lists_mismatch(ps_generated, ps_from_file)
     if check_result:
         logger.warning('P numbering mismatch at {}'.format(check_result))
@@ -180,8 +182,8 @@ def parse_person(column_range):
 
 
 def check_lists_mismatch(list_a, list_b):
-    from itertools import izip_longest
-    for a, b in izip_longest(list_a, list_b):
+    from itertools import zip_longest
+    for a, b in zip_longest(list_a, list_b):
         if a == b:
             pass
         else:
@@ -445,16 +447,16 @@ def set_ownership(realty):
         own_type = realty['own_type']
         own_part = None
         try :
-            if re.search(ur'дол', own_type.lower(), re.UNICODE):
+            if re.search(r'дол', own_type.lower(), re.UNICODE):
                 logger.debug(u"match: {}".format(own_type))
                 own_part = get_ownpart_amount(realty['own_type'])
                 own_type = u'долевая'
 
-            elif re.search(ur'инди', own_type.lower(), re.UNICODE):
+            elif re.search(r'инди', own_type.lower(), re.UNICODE):
                 logger.debug(u"match: {}".format(own_type))
                 own_type = u'индивидуальная'
 
-            elif re.search(ur'местн', own_type.lower(), re.UNICODE):
+            elif re.search(r'местн', own_type.lower(), re.UNICODE):
                 logger.debug(u"match: {}".format(own_type))
                 own_type = u'совместная'
 
@@ -523,7 +525,13 @@ def load_file(xls_file):
         ws_name = workbook.sheetnames[0]
         ws = workbook[ws_name]
         logger.info('Data loaded.')
-    except Exception, err:
+    # except:
+    #     try:
+    #         logger.info('Loading data from {}...'.format(xls_file))
+    #         workbook = xlrd.open_workbook('../2018_Sotrudniki_MVD_nomenklatury_Prezidenta_RF.xls') 
+    #         ws = workbook.sheet_by_index(0)
+    #         logger.info('Data loaded.')
+    except Exception as err:
         logger.error('Error ({}) loading file: {}'.format(err, xls_file))
     return ws
 
@@ -554,7 +562,7 @@ def save_to_file(blocks_of_data, split_at=0, save_dir='out'):
     except OSError as exc:
         if exc.errno == 17:
             logger.info('Directory "{}" already exists'.format(save_dir))
-    except Exception, err:
+    except Exception as err:
         logger.error('{}. Couldn\'t create directory'.format(err))
         
     blocks_count = 0
