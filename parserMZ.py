@@ -5,11 +5,23 @@ import dicttoxml
 import openpyxl
 
 import sys
+import re
+
 
 def getTypesDict():
     url = "https://declarator.org/media/dumps/patterns.json"
     entities = requests.get(url).json()
     return entities
+
+
+#for from dict to xml parser
+def list_func(name):
+    print(name)
+    if name == "transports":
+        return "transport"
+    elif name == "realties":
+        return "realty"
+
 
 '''
 def getBorder(sheet):
@@ -38,6 +50,70 @@ data[10],data[11],data[12]))
     print('{:<2d}'.format(data[0]))
     '''
 
+def parseName():
+    return None
+
+def parsePosition():
+    return None
+
+def parseRealties(person, fieldTypes):
+    for raw in person:
+        if raw[3] not in [u'-', u' ', u'', None]:
+            for type_ in fieldTypes:
+                #print(type_['data'], raw[3])
+                res = re.match(type_['data'], raw[3])
+                if res:
+                    print(type_['value'])
+                    #print(res)
+                    break
+
+    return None
+
+def parseTransports():
+    return None
+
+def parseIncome():
+    return None
+
+
+def getRelativeType(relation, fieldTypes):
+    return None
+
+
+def parseFamily(family, passThroughId, fieldTypes):
+    passThroughId += 1
+    officialId = passThroughId
+    official = {"id": officialId,
+              "name:": parseName(),
+              "relativeOf": None,
+              "relativeType": None,
+              "position": parsePosition(),
+              #"realties": parseRealties(),
+              "transports": parseTransports(),
+              "income": parseIncome(),
+              }
+
+    familyDicts = [official]
+
+    for i in range(1, len(family)):
+        passThroughId += 1
+        person = {"id": passThroughId,
+                  "name:": None,
+                  "relativeOf": officialId,
+                  "relativeType": getRelativeType(family[i][1], fieldTypes),
+                  "position": parsePosition(),
+                  #"realties": parseRealties(),
+                  "transports": parseTransports(),
+                  "income": parseIncome(),
+                  }
+
+        familyDicts.append(person)
+
+    for person in familyDicts:
+        print(person)
+    return familyDicts
+
+
 
 def getFamilyDicts(rawFamily, fieldTypes):
     family = []
@@ -50,6 +126,11 @@ def getFamilyDicts(rawFamily, fieldTypes):
             family.append(person)
             person = [rawFamily[i]]
     family.append(person)
+
+    for person in family:
+        parseRealties(person, fieldTypes)
+
+    familyDicts = parseFamily(family, 0, fieldTypes)
     '''
     #printing the family
     for person in family:
@@ -133,6 +214,8 @@ def main():
     fieldTypes = getTypesDict()
     people = parseTable(filename, fieldTypes)
     saveToXml()
+#from xml.dom.minidom import parseString
+#print(parseString(dicttoxml.dicttoxml(dictionary, item_func=lambda x: x[:-1] ,attr_type=False)).toprettyxml())
 
 
 if __name__ == "__main__":
