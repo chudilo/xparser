@@ -25,17 +25,40 @@ def getPerson(sheet, fieldTypes):
 
 
 def formatPrint(data):
+    pass
     '''
     13 fields: 1.num, 2.name 3.position 4. value
     5-8.property 9-11.used property 12.vehicle 13.extra income
-    '''
-    '''
+
     print('{:<2d}{:<15s}{:>30s}{:>12f}{:<10s}{:>10s}{:>12f}{:>12s}{:>12s}{:>12f}{:>12s}{:>12s}{:>12s}'.format(data[0],
 data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8],data[9],
 data[10],data[11],data[12]))
-    '''
+
     print(data[0])
     print('{:<2d}'.format(data[0]))
+    '''
+
+
+def getFamilyDicts(rawFamily, fieldTypes):
+    family = []
+    person = [rawFamily[0]]
+    for i in range(1, len(rawFamily)):
+        #print(" | ".join(map(str,row)))
+        if not rawFamily[i][1]:
+            person.append(rawFamily[i])
+        else:
+            family.append(person)
+            person = [rawFamily[i]]
+    family.append(person)
+    '''
+    #printing the family
+    for person in family:
+        for row in person:
+            print(row)
+        print()
+    '''
+    return None
+
 
 def parseTable(filename, fieldTypes):
     excel_document = openpyxl.load_workbook(filename)
@@ -56,11 +79,15 @@ def parseTable(filename, fieldTypes):
         if cond:
             person.append(value)
 
+    result = []
+    for person in rawPeople:
+        result.append(getFamilyDicts(person, fieldTypes))
+        break
     #print(rawPeople[0])
-
-    for person in rawPeople[1]:
-        formatPrint(person)
-
+    #print(rawPeople[0][0])
+    #for person in rawPeople[0]:
+        #formatPrint(person)
+    #    print(person[:13])
         #print(value)
         #break
         #rawPeople.append(value)
