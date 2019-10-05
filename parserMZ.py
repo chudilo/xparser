@@ -7,12 +7,66 @@ import openpyxl
 import sys
 import re
 
-
 def getTypesDict():
     url = "https://declarator.org/media/dumps/patterns.json"
     entities = requests.get(url).json()
     return entities
 
+
+def isSlotEmpty(string):
+    if string:
+        empty = ('-', ' ', '', 'не имеет', None)
+        if string.strip() in empty:
+            return True
+        else:
+            return False
+    else:
+        return True
+
+class Person(object):
+    total = 0
+    typesDict = getTypesDict()
+
+    def __init__(self, data, relationId=None):
+        Person.total += 1
+        self.data = data
+        self.relationId = relationId
+        self.setId()
+        self.setName()
+        self.setPosition()
+        self.setRelation()
+        #self.setRealties()
+        #self.setTransports()
+        self.setIncome()
+
+    def setId(self):
+        self.id = Person.total
+
+    def setName(self):
+        if self.relationId is None:
+            self.name = self.data[0][1]
+        else:
+            self.name = None
+
+    def setPosition(self):
+        if not isSlotEmpty(self.data[0][2]):
+            self.position = self.data[0][2]
+        else:
+            self.position = None
+
+    #Have to use the dictionary here V
+    def setRelation(self):
+        if self.relationId:
+            self.relationType = self.data[0][1]
+        else:
+            self.relationType = None
+
+    def setIncome(self):
+        self.income = self.data[0][11]
+
+    def __str__(self):
+        return "ID: {}\nИмя: {}\nРодство: {}\nДолжность: {}\nДоход: {}\n".format(
+            self.id, self.name, self.relationType, self.position, self.income)
 
 #for from dict to xml parser
 def list_func(name):
@@ -128,9 +182,15 @@ def getFamilyDicts(rawFamily, fieldTypes):
     family.append(person)
 
     for person in family:
-        parseRealties(person, fieldTypes)
+    #    parseRealties(person, fieldTypes)
+        #print(person[0][0])
+        if person[0][0]:
+            tmp = Person(person)
+        else:
+            tmp = Person(person, Person.total)
 
-    familyDicts = parseFamily(family, 0, fieldTypes)
+        print(tmp)
+    #familyDicts = parseFamily(family, 0, fieldTypes)
     '''
     #printing the family
     for person in family:
@@ -163,7 +223,7 @@ def parseTable(filename, fieldTypes):
     result = []
     for person in rawPeople:
         result.append(getFamilyDicts(person, fieldTypes))
-        break
+
     #print(rawPeople[0])
     #print(rawPeople[0][0])
     #for person in rawPeople[0]:
