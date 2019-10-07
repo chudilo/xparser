@@ -7,6 +7,8 @@ import openpyxl
 import sys
 import re
 
+
+#TODO: try block in request dict block
 def getTypesDict():
     url = "https://declarator.org/media/dumps/patterns.json"
     entities = requests.get(url).json()
@@ -26,6 +28,8 @@ def isSlotEmpty(string):
 class Person(object):
     total = 0
     typesDict = getTypesDict()
+    #for item in typesDict:
+    #    print(item)
 
     def __init__(self, data, relationId=None):
         Person.total += 1
@@ -35,8 +39,8 @@ class Person(object):
         self.setName()
         self.setPosition()
         self.setRelation()
-        #self.setRealties()
-        #self.setTransports()
+        self.setRealties()
+        self.setTransports()
         self.setIncome()
 
     def setId(self):
@@ -48,6 +52,89 @@ class Person(object):
         else:
             self.name = None
 
+    #realtyType: 1 || 2, objectType, RealtyName, ownershipType (ownershipPart???), square, country
+    def setRealties(self):
+        self.realties = []
+        for row in self.data:
+            realty = self.getRealty(row[3:7])
+            if realty != None:
+                self.realties.append(realty)
+
+            realty = self.getUsedRealty(row[7:10])
+            if realty != None:
+                self.realties.append(realty)
+
+    def getRealty(self, row):
+        #print(row)
+        if isSlotEmpty(row[0]):
+            return None
+        else:
+            realty = {'realtyType': 1, 'objectType': None,
+                      'realtyName': row[0], 'ownershipType': None,
+                      'square': row[2], 'country': None}
+            # MAKE FUNCTION
+            for type_ in self.typesDict:
+                res = re.match(type_['data'], row[0])
+                if res:
+                    realty['objectType'] = type_['value']
+                    break
+
+            for type_ in self.typesDict:
+                res = re.match(type_['data'], row[1])
+                if res:
+                    realty['ownershipType'] = type_['value']
+                    break
+
+            for type_ in self.typesDict:
+                res = re.match(type_['data'], row[3])
+                if res:
+                    realty['country'] = type_['value']
+                    break
+
+            return realty
+
+    def getUsedRealty(self, row):
+        if isSlotEmpty(row[0]):
+            return None
+        else:
+            realty = {'realtyType': 2, 'objectType': None,
+                      'realtyName': row[0],
+                      'square': row[1], 'country': None}
+            # MAKE FUNCTION
+            for type_ in self.typesDict:
+                res = re.match(type_['data'], row[0])
+                if res:
+                    realty['objectType'] = type_['value']
+                    break
+
+            for type_ in self.typesDict:
+                res = re.match(type_['data'], row[2])
+                if res:
+                    realty['country'] = type_['value']
+                    break
+                #print(res, print(row[2]))
+            return realty
+
+    def setTransports(self):
+        self.transports = []
+        for row in self.data:
+            #print("HERE", row[10])
+            transport = self.getTransport(row[10])
+            if transport == None:
+                return None
+            else:
+                self.transports.append(transport)
+
+
+    def getTransport(self, auto):
+        if not isSlotEmpty(auto):
+            for type_ in self.typesDict:
+                #print(auto)
+                res = re.match(type_['data'], auto)
+                if res:
+                    return type_['value']
+        return None
+
     def setPosition(self):
         if not isSlotEmpty(self.data[0][2]):
             self.position = self.data[0][2]
@@ -57,7 +144,17 @@ class Person(object):
     #Have to use the dictionary here V
     def setRelation(self):
         if self.relationId:
-            self.relationType = self.data[0][1]
+            #self.relationType = self.data[0][1]
+            for type_ in self.typesDict:
+                #print(type_['data'], raw[3])
+                res = re.match(type_['data'], self.data[0][1])
+                #print(type_['data'], self.data[0][1], "\n", res, "\n")
+                if res:
+                    #print(type_['value'])
+                    self.relationType = type_['value']
+                    break
+                else:
+                    self.relationType = self.data[0][1] + "|NOT FOUND"
         else:
             self.relationType = None
 
@@ -65,8 +162,24 @@ class Person(object):
         self.income = self.data[0][11]
 
     def __str__(self):
-        return "ID: {}\nИмя: {}\nРодство: {}\nДолжность: {}\nДоход: {}\n".format(
+        string = "ID: {}\nИмя: {}\nРодство: {}\nДолжность:{}\nДоход: {}\n".format(
             self.id, self.name, self.relationType, self.position, self.income)
+        string += "Собственность:\n"
+
+        if self.realties:
+            for realty in self.realties:
+                string += "\t" + "; ".join(map(str,realty.values())) + "\n"
+        else:
+            string += "\t" + "None" + "\n"
+
+
+        string += "Транспорт:\n"
+        if self.transports:
+            for transport in self.transports:
+                string += "\t" + str(transport) + "\n"
+        else:
+            string += "\t" + "None" + "\n"
+        return string
 
 #for from dict to xml parser
 def list_func(name):
@@ -133,7 +246,7 @@ def parseIncome():
 def getRelativeType(relation, fieldTypes):
     return None
 
-
+'''
 def parseFamily(family, passThroughId, fieldTypes):
     passThroughId += 1
     officialId = passThroughId
@@ -166,7 +279,7 @@ def parseFamily(family, passThroughId, fieldTypes):
     for person in familyDicts:
         print(person)
     return familyDicts
-
+'''
 
 
 def getFamilyDicts(rawFamily, fieldTypes):
@@ -184,12 +297,16 @@ def getFamilyDicts(rawFamily, fieldTypes):
     for person in family:
     #    parseRealties(person, fieldTypes)
         #print(person[0][0])
+        relationId = None
         if person[0][0]:
             tmp = Person(person)
+            relationId = tmp.id
         else:
-            tmp = Person(person, Person.total)
+            tmp = Person(person, relationId)
 
         print(tmp)
+        #for realty in tmp.realties:
+        #    print(realty)
     #familyDicts = parseFamily(family, 0, fieldTypes)
     '''
     #printing the family
