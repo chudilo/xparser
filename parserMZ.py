@@ -9,6 +9,9 @@ import re
 
 
 #TODO: try block in request dict block
+hitDict = {}
+notHitDict = {}
+
 def getTypesDict():
     url = "https://declarator.org/media/dumps/patterns.json"
     entities = requests.get(url).json()
@@ -28,8 +31,8 @@ def isSlotEmpty(string):
 class Person(object):
     total = 0
     typesDict = getTypesDict()
-    #for item in typesDict:
-    #    print(item)
+    for item in typesDict:
+        print(item)
 
     def __init__(self, data, relationId=None):
         Person.total += 1
@@ -42,6 +45,31 @@ class Person(object):
         self.setRealties()
         self.setTransports()
         self.setIncome()
+
+    def compareWithDict(self, value):
+        if value:
+            ret = []
+            for type_ in self.typesDict:
+                #print(type_['data'], value)
+                cmpr = re.match(type_['data'], value)
+                if cmpr:
+                    if value in hitDict.keys():
+                        hitDict[value] += 1
+                    else:
+                        hitDict[value] = 1
+
+                    return type_['value']
+
+            else:
+                if value in notHitDict.keys():
+                    notHitDict[value] += 1
+                else:
+                    notHitDict[value] = 1
+
+                return value + "[NOT FOUND]"
+
+        else:
+            return "[NONE]"
 
     def setId(self):
         self.id = Person.total
@@ -73,23 +101,10 @@ class Person(object):
                       'realtyName': row[0], 'ownershipType': None,
                       'square': row[2], 'country': None}
             # MAKE FUNCTION
-            for type_ in self.typesDict:
-                res = re.match(type_['data'], row[0])
-                if res:
-                    realty['objectType'] = type_['value']
-                    break
-
-            for type_ in self.typesDict:
-                res = re.match(type_['data'], row[1])
-                if res:
-                    realty['ownershipType'] = type_['value']
-                    break
-
-            for type_ in self.typesDict:
-                res = re.match(type_['data'], row[3])
-                if res:
-                    realty['country'] = type_['value']
-                    break
+            #print("row[0]", row[0])
+            realty['objectType'] = self.compareWithDict(row[0])
+            realty['ownershipType'] = self.compareWithDict(row[1])
+            realty['country'] = self.compareWithDict(row[3])
 
             return realty
 
@@ -97,22 +112,14 @@ class Person(object):
         if isSlotEmpty(row[0]):
             return None
         else:
+            #print("used realty:",row)
             realty = {'realtyType': 2, 'objectType': None,
                       'realtyName': row[0],
                       'square': row[1], 'country': None}
             # MAKE FUNCTION
-            for type_ in self.typesDict:
-                res = re.match(type_['data'], row[0])
-                if res:
-                    realty['objectType'] = type_['value']
-                    break
+            realty['objectType'] = self.compareWithDict(row[0])
+            realty['country'] = self.compareWithDict(row[2])
 
-            for type_ in self.typesDict:
-                res = re.match(type_['data'], row[2])
-                if res:
-                    realty['country'] = type_['value']
-                    break
-                #print(res, print(row[2]))
             return realty
 
     def setTransports(self):
@@ -129,10 +136,7 @@ class Person(object):
     def getTransport(self, auto):
         if not isSlotEmpty(auto):
             for type_ in self.typesDict:
-                #print(auto)
-                res = re.match(type_['data'], auto)
-                if res:
-                    return type_['value']
+                return self.compareWithDict(auto)
         return None
 
     def setPosition(self):
@@ -144,17 +148,7 @@ class Person(object):
     #Have to use the dictionary here V
     def setRelation(self):
         if self.relationId:
-            #self.relationType = self.data[0][1]
-            for type_ in self.typesDict:
-                #print(type_['data'], raw[3])
-                res = re.match(type_['data'], self.data[0][1])
-                #print(type_['data'], self.data[0][1], "\n", res, "\n")
-                if res:
-                    #print(type_['value'])
-                    self.relationType = type_['value']
-                    break
-                else:
-                    self.relationType = self.data[0][1] + "|NOT FOUND"
+            self.relationType = self.compareWithDict(self.data[0][1])
         else:
             self.relationType = None
 
@@ -391,6 +385,13 @@ def main():
     fieldTypes = getTypesDict()
     people = parseTable(filename, fieldTypes)
     saveToXml()
+    print("POSITIVE COMPARE")
+    for item in hitDict.items():
+        print(item)
+
+    print("NEGATIVE COMPARE")
+    for item in notHitDict.items():
+        print(item)
 #from xml.dom.minidom import parseString
 #print(parseString(dicttoxml.dicttoxml(dictionary, item_func=lambda x: x[:-1] ,attr_type=False)).toprettyxml())
 
