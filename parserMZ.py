@@ -13,6 +13,7 @@ from xml.dom.minidom import parseString
 
 #TODO: try block in request dict block
 hitDict = {}
+hitDictL = {}
 notHitDict = {}
 
 def getTypesDict():
@@ -34,8 +35,8 @@ def isSlotEmpty(string):
 class Person(object):
     total = 0
     typesDict = getTypesDict()
-    for item in typesDict:
-        print(item)
+    #for item in typesDict:
+    #    print(item)
 
     def __init__(self, data, relationId=None):
         Person.total += 1
@@ -56,7 +57,7 @@ class Person(object):
                 #print(type_['data'], value)
                 cmpr = re.match(type_['data'], value.strip())
                 if cmpr:
-                    if value in hitDict.keys():
+                    if value.strip() in hitDict.keys():
                         hitDict[value.strip()] += 1
                     else:
                         hitDict[value.strip()] = 1
@@ -64,12 +65,23 @@ class Person(object):
                     return type_['value']
 
             else:
-                if value in notHitDict.keys():
-                    notHitDict[value] += 1
-                else:
-                    notHitDict[value] = 1
+                for type_ in self.typesDict:
+                    #print(type_['data'], value)
+                    cmpr = re.match(type_['data'], value.strip().lower())
+                    if cmpr:
+                        if value.strip().lower() in hitDictL.keys():
+                            hitDictL[value.strip()] += 1
+                        else:
+                            hitDictL[value.strip()] = 1
 
-                return value + "[NOT FOUND]"
+                        return type_['value']
+                else:
+                    if value in notHitDict.keys():
+                        notHitDict[value] += 1
+                    else:
+                        notHitDict[value] = 1
+
+                    return "~"+value+"~"
 
         else:
             return "[NONE]"
@@ -100,6 +112,15 @@ class Person(object):
         if isSlotEmpty(row[0]):
             return None
         else:
+            realty = OrderedDict()
+            realty['realtyType'] = 1
+            realty['objectType'] = self.compareWithDict(row[0])
+            realty['ownershipType'] = self.compareWithDict(row[1])
+            realty['ownershipPart'] = None
+            realty['sqare'] = row[1]
+            realty['country'] = self.compareWithDict(row[3])
+
+            '''
             realty = {'realtyType': 1, 'objectType': None,
                       'realtyName': row[0], 'ownershipType': None,
                       'square': row[2], 'country': None}
@@ -108,7 +129,7 @@ class Person(object):
             realty['objectType'] = self.compareWithDict(row[0])
             realty['ownershipType'] = self.compareWithDict(row[1])
             realty['country'] = self.compareWithDict(row[3])
-
+            '''
             return realty
 
     def getUsedRealty(self, row):
@@ -116,12 +137,20 @@ class Person(object):
             return None
         else:
             #print("used realty:",row)
+            realty = OrderedDict()
+            realty['realtyType'] = 2
+            realty['objectType'] = self.compareWithDict(row[0])
+            realty['sqare'] = row[1]
+            realty['country'] = self.compareWithDict(row[2])
+
+            '''
             realty = {'realtyType': 2, 'objectType': None,
                       'realtyName': row[0],
                       'square': row[1], 'country': None}
             # MAKE FUNCTION
             realty['objectType'] = self.compareWithDict(row[0])
             realty['country'] = self.compareWithDict(row[2])
+            '''
 
             return realty
 
@@ -151,7 +180,9 @@ class Person(object):
     #Have to use the dictionary here V
     def setRelation(self):
         if self.relationId:
+            #print("relation Type")
             self.relationType = self.compareWithDict(self.data[0][1])
+            #print(self.relationType)
         else:
             self.relationType = None
 
@@ -292,11 +323,11 @@ def getFamilyDicts(rawFamily, fieldTypes):
     family.append(person)
 
     familyObjs = []
-
+    relationId = None
     for person in family:
     #    parseRealties(person, fieldTypes)
         #print(person[0][0])
-        relationId = None
+
         if person[0][0]:
             tmp = Person(person)
             relationId = tmp.id
@@ -383,6 +414,15 @@ def parseTable(filename, fieldTypes):
 
 
 def saveToXml(people):
+    '''
+    if not count:
+        count = len(people)
+    if not rng:
+        rng = (0, len(people))
+
+    for i in range(rng[0],rng[1]):
+    '''
+    xmlFamilyString = '<?xml version="1.0" ?><persons xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="declarationXMLtemplate_Schema _transport_merged.xsd">'
     for family in people:
         for person in family:
             orderedPerson = OrderedDict()
@@ -397,13 +437,28 @@ def saveToXml(people):
             orderedPerson['incomeSource'] = None
             #we dont take two last fields from files, they said
 
-            xmlString = dicttoxml.dicttoxml(orderedPerson, custom_root="person" ,attr_type=False, item_func=list_func).decode()
-            print(xmlString)
+            #xmlString = dicttoxml.dicttoxml(orderedPerson, custom_root="person" ,attr_type=False, item_func=list_func).decode()
+            xmlString = dicttoxml.dicttoxml({'person': orderedPerson}, root=False ,attr_type=False, item_func=list_func).decode()
+            #xmlString = re.sub(r'<(.*?)></(.*?)>', r'<\1 xsi:nil="true"/>', xmlString)
+            #print(xmlString)
+            xmlFamilyString += xmlString
 
-            prettyXml = parseString(xmlString).toprettyxml()
-            print("\n", prettyXml)
+
+    #print(res)
+    prettyXml = parseString(xmlFamilyString + "</persons>").toprettyxml()
+    #print(prettyXml)
+    #res = re.findall(r'<.*?/>', prettyXml)
+    #print(res)
+
+    #print("\n\n\n\n")
+    res = re.sub(r'<(.*?)/>', r'<\1 xsi:nil="true"/>', prettyXml, count=0)
+    #print(res)
+    with open("my_out/out.xml", 'w') as f:
+        f.write(res)
+
+        #re.sub(pattern, repl, string, count=0)
 #<?xml version="1.0" ?>\n<persons xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="declarationXMLtemplate_Schema _transport_merged.xsd">
-
+#[22:]
 def main():
     filename = str(sys.argv[1])
     #print(filename)
@@ -411,13 +466,16 @@ def main():
     fieldTypes = getTypesDict()
     people = parseTable(filename, fieldTypes)
     saveToXml(people)
+    '''
     print("POSITIVE COMPARE")
-    for key in hitDict.keys():
-        print(key, ":", hitDict[key])
+    print(json.dumps(hitDict, indent=4, ensure_ascii=False))
+
+    print("POSITIVE COMPARE WITH LOWER")
+    print(json.dumps(hitDictL, indent=4, ensure_ascii=False))
 
     print("NEGATIVE COMPARE")
-    for key in notHitDict.keys():
-        print(key, ":", notHitDict[key])
+    print(json.dumps(notHitDict, indent=4, ensure_ascii=False))
+    '''
 #from xml.dom.minidom import parseString
 #print(parseString(dicttoxml.dicttoxml(dictionary, item_func=lambda x: x[:-1] ,attr_type=False)).toprettyxml())
 
