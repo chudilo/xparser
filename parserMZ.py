@@ -7,6 +7,9 @@ import openpyxl
 import sys
 import re
 
+from collections import OrderedDict
+from xml.dom.minidom import parseString
+
 
 #TODO: try block in request dict block
 hitDict = {}
@@ -51,12 +54,12 @@ class Person(object):
             ret = []
             for type_ in self.typesDict:
                 #print(type_['data'], value)
-                cmpr = re.match(type_['data'], value)
+                cmpr = re.match(type_['data'], value.strip())
                 if cmpr:
                     if value in hitDict.keys():
-                        hitDict[value] += 1
+                        hitDict[value.strip()] += 1
                     else:
-                        hitDict[value] = 1
+                        hitDict[value.strip()] = 1
 
                     return type_['value']
 
@@ -177,7 +180,7 @@ class Person(object):
 
 #for from dict to xml parser
 def list_func(name):
-    print(name)
+    #print(name)
     if name == "transports":
         return "transport"
     elif name == "realties":
@@ -288,6 +291,8 @@ def getFamilyDicts(rawFamily, fieldTypes):
             person = [rawFamily[i]]
     family.append(person)
 
+    familyObjs = []
+
     for person in family:
     #    parseRealties(person, fieldTypes)
         #print(person[0][0])
@@ -297,8 +302,10 @@ def getFamilyDicts(rawFamily, fieldTypes):
             relationId = tmp.id
         else:
             tmp = Person(person, relationId)
+        familyObjs.append(tmp)
 
-        print(tmp)
+    return familyObjs
+        #print(tmp)
         #for realty in tmp.realties:
         #    print(realty)
     #familyDicts = parseFamily(family, 0, fieldTypes)
@@ -334,7 +341,8 @@ def parseTable(filename, fieldTypes):
     result = []
     for person in rawPeople:
         result.append(getFamilyDicts(person, fieldTypes))
-
+        break
+    return result
     #print(rawPeople[0])
     #print(rawPeople[0][0])
     #for person in rawPeople[0]:
@@ -374,9 +382,27 @@ def parseTable(filename, fieldTypes):
     '''
 
 
-def saveToXml():
-    pass
+def saveToXml(people):
+    for family in people:
+        for person in family:
+            orderedPerson = OrderedDict()
+            orderedPerson['id'] = person.id
+            orderedPerson['name'] = person.name
+            orderedPerson['relativeOf'] = person.relationId
+            orderedPerson['relationType'] = person.relationType
+            orderedPerson['realties'] = person.realties
+            orderedPerson['transports'] = person.transports
+            orderedPerson['income'] = person.income
+            orderedPerson['incomeComment'] = None
+            orderedPerson['incomeSource'] = None
+            #we dont take two last fields from files, they said
 
+            xmlString = dicttoxml.dicttoxml(orderedPerson, custom_root="person" ,attr_type=False, item_func=list_func).decode()
+            print(xmlString)
+
+            prettyXml = parseString(xmlString).toprettyxml()
+            print("\n", prettyXml)
+#<?xml version="1.0" ?>\n<persons xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="declarationXMLtemplate_Schema _transport_merged.xsd">
 
 def main():
     filename = str(sys.argv[1])
@@ -384,14 +410,14 @@ def main():
 
     fieldTypes = getTypesDict()
     people = parseTable(filename, fieldTypes)
-    saveToXml()
+    saveToXml(people)
     print("POSITIVE COMPARE")
-    for item in hitDict.items():
-        print(item)
+    for key in hitDict.keys():
+        print(key, ":", hitDict[key])
 
     print("NEGATIVE COMPARE")
-    for item in notHitDict.items():
-        print(item)
+    for key in notHitDict.keys():
+        print(key, ":", notHitDict[key])
 #from xml.dom.minidom import parseString
 #print(parseString(dicttoxml.dicttoxml(dictionary, item_func=lambda x: x[:-1] ,attr_type=False)).toprettyxml())
 
